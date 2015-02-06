@@ -1,0 +1,7 @@
+Markdown==2.5.2
+SQLAlchemy==0.9.8
+bottle==0.12.8
+bottle-sqlalchemy==0.4.2
+icalendar==3.8.4
+pytz==2014.10
+trueskill==0.4.3
