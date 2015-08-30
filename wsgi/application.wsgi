@@ -269,13 +269,24 @@ def handle_api_ladder(db):
                        "uberId": int(p[2]) if p[2] else None}
                       for p in top], indent=2)
 
-
-@app.route("/api/leaderboards")
-def handle_api_leaderboards(db):
+@app.route("/api/leaderboard/"
+           "<game:re:vanilla|titans>/"
+           "<league:re:uber|platinum|gold|silver|bronze>")
+def handle_api_leaderboard(game, league, db):
     """
-    Query official Uber Leaderboards.
+    Query an official Uber Leaderboard.
 
-    This method returns arrays of players in order of ranking for each league.
+    This method returns an array of players in order of ranking for the
+    specified game and league.
+
+    # URL Parameters #
+    `game (string)`
+    :   The game for which to query a league.
+        Allowed values are: `vanilla`, `titans`
+
+    `league (string)`
+    :   The league to query.
+        Allowed values are: `uber`, `platinum`, `gold`, `silver`, `bronze`
 
     # Response Data #
     `uid (int)`
@@ -295,59 +306,49 @@ def handle_api_leaderboards(db):
     :   LeaderBoards are returned.
 
     # Example Request #
-        GET /api/leaderboards HTTP/1.1
+        GET /api/leaderboard/titans/uber HTTP/1.1
         Host: pa.coffee-break.at
 
     # Example Response #
         HTTP/1.1 200 OK
         Content-Type: application/json
 
-        {
-            "uber":
-            [
-                {
-                    "uid": 1234567890123456789
-                    "pid": 123,
-                    "name": "Dummy User A",
-                    "lastmatchat": "2012-04-28T19:00:00"
-                },
-                {
-                    "uid": 9876543210987654321
-                    "pid": null,
-                    "name": "Dummy User B",
-                    "lastmatchat": "2012-11-11T11:11:00"
-                },
-                ...
-            ],
-            "platinum": [...],
-            "gold": [...],
-            "silver": [...],
-            "bronze": [...]
-        }
+        [
+            {
+                "uid": 1234567890123456789
+                "pid": 123,
+                "name": "Dummy User A",
+                "lastmatchat": "2012-04-28T19:00:00"
+            },
+            {
+                "uid": 9876543210987654321
+                "pid": null,
+                "name": "Dummy User B",
+                "lastmatchat": "2012-11-11T11:11:00"
+            },
+            ...
+        ]
     """
     response.set_header("Access-Control-Allow-Origin", "*")
     response.set_header("Content-Type", "application/json")
 
-    entries = (db.query(LeaderBoardEntry.league, LeaderBoardEntry.last,
+    entries = (db.query(LeaderBoardEntry.last,
                         UberAccount.uid, UberAccount.pid, UberAccount.dname)
                  .outerjoin(UberAccount,
                             UberAccount.uid == LeaderBoardEntry.uid)
-                 .order_by(LeaderBoardEntry.league, LeaderBoardEntry.rank)
+                 .filter(LeaderBoardEntry.game == game.capitalize(),
+                         LeaderBoardEntry.league == league.capitalize())
+                 .order_by(LeaderBoardEntry.rank)
                  .all())
 
-    leaderboards = dict()
-    for league, group in groupby(entries, key=lambda e: e[0]):
-        subentries = [{"uid": int(e[2]),
-                       "pid": int(e[3]) if e[3] else None,
-                       "name": e[4],
-                       "lastmatchat": e[1].isoformat()} for e in group]
-        leaderboards[league.lower()] = subentries
-
-    return dumps(leaderboards, indent=2)
-
+    return dumps([{"uid": int(e[1]),
+                   "pid": int(e[2]) if e[2] else None,
+                   "name": e[3],
+                   "lastmatchat": e[0].isoformat()} for e in entries],
+                 indent=2)
 
 @app.route("/api/leaderboard/<league:re:uber|platinum|gold|silver|bronze>")
-def handle_api_leaderboard(league, db):
+def handle_api_leaderboard_deprecated(league, db):
     """
     Query an official Uber Leaderboard.
 
@@ -407,7 +408,8 @@ def handle_api_leaderboard(league, db):
                         UberAccount.uid, UberAccount.pid, UberAccount.dname)
                  .outerjoin(UberAccount,
                             UberAccount.uid == LeaderBoardEntry.uid)
-                 .filter(LeaderBoardEntry.league == league.capitalize())
+                 .filter(LeaderBoardEntry.game == "Vanilla",
+                         LeaderBoardEntry.league == league.capitalize())
                  .order_by(LeaderBoardEntry.rank)
                  .all())
 
