@@ -825,7 +825,6 @@ def handle_documentation():
     doc_funcs = (handle_api_uberid_by_pid,
                  handle_api_rank,
                  handle_api_ladder,
-                 handle_api_leaderboards,
                  handle_api_leaderboard,
                  handle_api_quality,
                  handle_api_builds,
